@@ -505,23 +505,47 @@
     $$(".mem-open").forEach(btn=>btn.addEventListener("click",()=>openMemoriamGallery(btn.dataset.memId)));
     $$("[data-close-mem]").forEach(el=>el.addEventListener("click",closeMemoriamGallery));
     document.onkeydown = e=>{ if(e.key==="Escape") closeMemoriamGallery(); };
-        const install=$("#installBtn");
-    if(install && deferredPrompt){
-      install.style.display="inline-flex";
+    const install=$("#installBtn");
+    if(install){
+      updateInstallButton();
+      // Bind independently of when Chrome decides the app is installable.
       install.addEventListener("click",async()=>{
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt=null;install.style.display="none";
-      },{once:true});
+        const prompt = deferredPrompt;
+        if(!prompt) return;
+        deferredPrompt=null;
+        updateInstallButton();
+        try {
+          await prompt.prompt();
+          await prompt.userChoice;
+        } catch(error) {
+          console.warn("PWA installation prompt failed:", error);
+        }
+      });
     }
   }
 
+  function updateInstallButton(){
+    const button=$("#installBtn");
+    if(button) button.style.display=deferredPrompt && !window.matchMedia("(display-mode: standalone)").matches ? "inline-flex" : "none";
+  }
+
   window.addEventListener("beforeinstallprompt",(e)=>{
-    e.preventDefault();deferredPrompt=e;
-    const b=$("#installBtn"); if(b) b.style.display="inline-flex";
+    e.preventDefault();
+    deferredPrompt=e;
+    updateInstallButton();
   });
 
-  window.addEventListener("appinstalled",()=>{deferredPrompt=null;});
+  window.addEventListener("appinstalled",()=>{
+    deferredPrompt=null;
+    updateInstallButton();
+  });
+
+  // Registration must not wait for the external content endpoint.
+  if("serviceWorker" in navigator && window.isSecureContext){
+    navigator.serviceWorker.register("./sw.js", {updateViaCache:"none"}).catch(error=>{
+      console.warn("PWA service worker registration failed:", error);
+    });
+  }
 
   if(/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches){
     window.addEventListener("load",()=>setTimeout(()=>{
@@ -533,8 +557,5 @@
   window.addEventListener("DOMContentLoaded",async()=>{
     remoteData = await loadPublicData();
     render();
-    if("serviceWorker" in navigator){
-      navigator.serviceWorker.register("./sw.js").catch(()=>{});
-    }
   });
 })();

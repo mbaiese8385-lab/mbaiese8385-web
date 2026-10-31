@@ -2,6 +2,7 @@
   "name": "MBA 83-85 fam",
   "short_name": "MBA 83-85",
   "description": "Recuerdos, encuentros y próximas celebraciones de la promoción MBA 83-85.",
+  "id": "./",
   "start_url": "./#home",
   "scope": "./",
   "display": "standalone",
