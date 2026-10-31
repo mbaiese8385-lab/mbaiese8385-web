@@ -1,0 +1,12 @@
+MBA 83-85 fam · V10 — archivos para GitHub Pages
+
+Subir al repositorio mba83-85-fam:
+- index.html
+- app.js
+- data.js
+- styles.css
+- manifest.webmanifest
+- sw.js
+- carpeta assets
+
+No contiene Apps Script ni el administrador de Google Sheets.
