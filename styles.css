@@ -145,16 +145,25 @@ img{max-width:100%;display:block}
 
 @media(max-width:1040px){
   .desktop-nav{display:none}.menu-btn{display:inline-grid;place-items:center}
-  .brand-mini{flex:1}.header-actions{margin-left:auto}
+  .brand-mini{flex:1;min-width:0}.header-actions{margin-left:auto}
   .hero-grid{grid-template-columns:330px 1fr;gap:36px}
 }
 @media(max-width:760px){
-  .container{width:min(100% - 26px,1180px)}
-  .header-inner{height:68px;gap:8px}
-  .brand-mini strong{font-size:17px}.brand-mini img{width:50px;height:50px}
-  .install-btn{font-size:13px;padding:8px 10px}
-  .hero{padding:34px 0 26px}.hero-grid{grid-template-columns:1fr;gap:22px;text-align:center}
-  .hero-logo{max-width:275px}.hero p{font-size:18px}.hero-buttons{justify-content:center}
+  .container{width:min(calc(100% - 32px),1180px)}
+  .header-inner{height:auto;min-height:64px;padding:8px 0;gap:8px}
+  .brand-mini{flex:1 1 44px;min-width:0}
+  .brand-mini strong{display:none}.brand-mini img{width:44px;height:44px;flex:none}
+  .header-actions{flex:0 1 auto;min-width:0;max-width:calc(100% - 52px);gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .lang-switch button{font-size:14px;padding:6px 8px;min-height:36px}
+  .menu-btn{flex:none;width:44px;height:44px;font-size:20px}
+  .install-btn{font-size:12px;padding:8px;white-space:nowrap}
+  .hero{padding:26px 0}.hero-grid{grid-template-columns:minmax(0,1fr);gap:20px;text-align:center}
+  .hero-logo{max-width:min(60vw,220px)}
+  .hero h1{font-size:clamp(32px,8.8vw,40px);line-height:1.08;margin:10px 0 16px}
+  .hero p{font-size:17px}.hero-buttons{justify-content:center}
+  .page-hero{padding:32px 0 24px}
+  .page-hero h1{font-size:clamp(32px,8.8vw,40px);overflow-wrap:anywhere}
+  .page-hero p{font-size:17px}
   .section{padding:38px 0}.section-head{display:block}.section-head p{margin-top:8px}
   .card-grid,.resource-grid,.lunch-grid,.future-grid,.future-detail{grid-template-columns:1fr}
   .memoriam-grid{grid-template-columns:1fr 1fr}

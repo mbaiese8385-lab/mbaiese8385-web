@@ -1,6 +1,6 @@
 const BASE = new URL("./", self.location.href);
 const CACHE_PREFIX = `mba83-85-fam:${BASE.pathname}:`;
-const CACHE = `${CACHE_PREFIX}v10.3`;
+const CACHE = `${CACHE_PREFIX}v10.4`;
 const SHELL = [
   "./", "./index.html", "./styles.css", "./data.js", "./app.js",
   "./manifest.webmanifest", "./assets/mba83-85-fam-logo.png",
