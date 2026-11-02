@@ -3,8 +3,8 @@ window.MBA_CONTENT = {
   meta: {
     name: "MBA 83-85 fam",
     defaultLang: "es",
-    // Pegaremos aquí la URL del Web App de Google Apps Script cuando lo despleguemos.
-    publicDataEndpoint: "",
+    // Publicación de lectura de los contenidos administrados desde Google Sheets.
+    publicDataEndpoint: "https://script.google.com/macros/s/AKfycbzjr5W4VmHRPsgZSB4GfAY0LkljHl4j_lQgJ2mv-H5ZzypNu2llXxQ0gYNIDU70B150/exec",
     madridCampusImage: "https://www.iese.edu/es/wp-content/uploads/sites/2/2021/07/Abierto-ok.jpg",
     barcelonaCampusImage: "https://www.iese.edu/mba/wp-content/uploads/sites/2/2023/04/iStock_5806449_1600x700.jpg"
   },
