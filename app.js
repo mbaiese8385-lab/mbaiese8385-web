@@ -174,14 +174,16 @@
       return items.map((url,i)=>linkButton(url, items.length>1 ? `${label} ${i+1}` : label)).join("");
     }
 
-    const eventCards = events && events.length ? events.map(ev => `
+    const eventCards = events && events.length ? events.map(ev => {
+      const title = (lang==="en" ? ev.nameEn || ev.name : ev.name) || t("event");
+      return `
       <article class="event-card">
         <div class="event-cover">
-          ${visualPhotoCarousel(ev,`<div class="event-placeholder">${item.year}</div>`,ev.name||"")}
+          ${visualPhotoCarousel(ev,`<div class="event-placeholder">${item.year}</div>`,title)}
         </div>
         <div class="event-body">
           ${ev.sample ? `<span class="badge">${t("sample")}</span>` : ``}
-          <h3>${escapeHtml(ev.name || t("event"))}</h3>
+          <h3>${escapeHtml(title)}</h3>
           <div class="event-meta">
             ${ev.date ? `<span>${escapeHtml(ev.date)}</span>` : ``}
             ${ev.time ? `<span>${escapeHtml(ev.time)}</span>` : ``}
@@ -194,7 +196,8 @@
           </div>
         </div>
       </article>
-    `).join("") : `<p>${lang==="es"?"Todavía no hay eventos cargados.":"No events have been added yet."}</p>`;
+    `;
+    }).join("") : `<p>${lang==="es"?"Todavía no hay eventos cargados.":"No events have been added yet."}</p>`;
 
     return `
       <main>
