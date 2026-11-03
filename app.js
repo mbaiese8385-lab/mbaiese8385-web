@@ -5,6 +5,7 @@
   let deferredPrompt = null;
   let remoteData = null;
   let currentMemoriamItems = [];
+  let carouselCleanups = [];
 
   const $ = (s, el=document) => el.querySelector(s);
   const $$ = (s, el=document) => [...el.querySelectorAll(s)];
@@ -131,7 +132,9 @@
     const carouselId = `car-${String(item?.id || Math.random()).replace(/[^A-Za-z0-9_-]/g,"")}`;
     const slides = photos.map((p,i)=>`
       <div class="carousel-slide" data-slide="${i}">
-        <img src="${p.url}" alt="${escapeHtml(altText||"")} ${i+1}" loading="lazy">
+        <button type="button" class="carousel-photo-open" aria-haspopup="dialog" aria-label="${lang==="es"?"Ampliar foto":"Enlarge photo"} ${i+1}: ${escapeHtml(altText||"")}">
+          <img src="${escapeHtml(p.url)}" alt="${escapeHtml(altText||"")} ${i+1}" loading="lazy" draggable="false">
+        </button>
       </div>`).join("");
 
     const dots = photos.length>1
@@ -146,7 +149,7 @@
       : "";
 
     return `
-      <div class="photo-carousel" id="${carouselId}" data-count="${photos.length}">
+      <div class="photo-carousel" id="${carouselId}" data-count="${photos.length}" data-photo-title="${escapeHtml(altText||"")}">
         <div class="carousel-track">${slides}</div>
         ${arrows}
         ${dots}
@@ -448,57 +451,138 @@
   }
 
   function render(){
+    const oldLightbox=$("#photoLightbox");
+    if(oldLightbox?.open)oldLightbox.close();
+    carouselCleanups.forEach(cleanup=>cleanup());
+    carouselCleanups=[];
+    document.body.classList.remove("photo-lightbox-open");
     const route=currentRoute();
     document.documentElement.lang=lang;
     document.title = `${C.meta.name} · ${route==="home"?(lang==="es"?"Inicio":"Home"):route}`;
-    document.getElementById("app").innerHTML = header()+routeContent(route)+footer();
+    document.getElementById("app").innerHTML = header()+routeContent(route)+footer()+photoLightboxMarkup();
     $$(".nav-link").forEach(a=>a.classList.toggle("active",a.dataset.route===route));
     bindUI();
     window.scrollTo(0,0);
   }
 
 
-  function initCarousels(){
+  function photoLightboxMarkup(){
+    const es=lang==="es";
+    return `
+      <dialog id="photoLightbox" class="photo-lightbox" aria-labelledby="photoLightboxTitle">
+        <div class="photo-lightbox-header">
+          <p id="photoLightboxTitle"></p>
+          <button class="photo-lightbox-close" type="button" aria-label="${es?"Cerrar vista ampliada":"Close enlarged view"}">×</button>
+        </div>
+        <div class="photo-lightbox-stage">
+          <div class="photo-lightbox-track" tabindex="0" aria-label="${es?"Fotos ampliadas":"Enlarged photos"}"></div>
+          <button class="photo-lightbox-prev" type="button" aria-label="${es?"Foto anterior":"Previous photo"}">‹</button>
+          <button class="photo-lightbox-next" type="button" aria-label="${es?"Foto siguiente":"Next photo"}">›</button>
+        </div>
+        <p class="photo-lightbox-count" aria-live="polite" aria-atomic="true"></p>
+      </dialog>`;
+  }
+
+  function initPhotoLightbox(){
+    const dialog=$("#photoLightbox");
+    const track=$(".photo-lightbox-track",dialog);
+    const prev=$(".photo-lightbox-prev",dialog),next=$(".photo-lightbox-next",dialog);
+    const close=$(".photo-lightbox-close",dialog),count=$(".photo-lightbox-count",dialog);
+    let currentIndex=0,photos=[],opener=null,sourceCarousel=null,scrollTimer=null;
+
+    function update(index){
+      currentIndex=Math.max(0,Math.min(photos.length-1,index));
+      count.textContent=photos.length?`${currentIndex+1} / ${photos.length}`:"";
+      prev.hidden=next.hidden=photos.length<2;
+      prev.disabled=currentIndex===0;
+      next.disabled=currentIndex===photos.length-1;
+    }
+    function goTo(index,smooth=true){
+      update(index);
+      track.scrollTo({left:currentIndex*track.clientWidth,behavior:smooth&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches?"smooth":"auto"});
+    }
+    close.addEventListener("click",()=>dialog.close());
+    prev.addEventListener("click",()=>goTo(currentIndex-1));
+    next.addEventListener("click",()=>goTo(currentIndex+1));
+    dialog.addEventListener("keydown",event=>{
+      if(event.key==="ArrowLeft"||event.key==="ArrowRight"){
+        event.preventDefault();goTo(currentIndex+(event.key==="ArrowRight"?1:-1));
+      }
+    });
+    track.addEventListener("scroll",()=>{
+      clearTimeout(scrollTimer);
+      scrollTimer=setTimeout(()=>update(Math.round(track.scrollLeft/(track.clientWidth||1))),90);
+    },{passive:true});
+    const onResize=()=>{if(dialog.open)goTo(currentIndex,false)};
+    window.addEventListener("resize",onResize);
+    carouselCleanups.push(()=>{clearTimeout(scrollTimer);window.removeEventListener("resize",onResize)});
+    dialog.addEventListener("close",()=>{
+      clearTimeout(scrollTimer);
+      document.body.classList.remove("photo-lightbox-open");
+      const sourceTrack=sourceCarousel?.querySelector(".carousel-track");
+      if(sourceTrack&&sourceCarousel.isConnected){
+        sourceTrack.scrollTo({left:currentIndex*sourceTrack.clientWidth,behavior:"auto"});
+        [...sourceCarousel.querySelectorAll(".carousel-dot")].forEach((dot,i)=>dot.classList.toggle("active",i===currentIndex));
+      }
+      track.replaceChildren();
+      if(opener?.isConnected)opener.focus({preventScroll:true});
+    });
+    return (carousel,index,button)=>{
+      sourceCarousel=carousel;opener=button;
+      photos=[...carousel.querySelectorAll(".carousel-slide img")].map(img=>({url:img.src,alt:img.alt}));
+      if(!photos.length)return;
+      $("#photoLightboxTitle").textContent=carousel.dataset.photoTitle||(lang==="es"?"Fotos":"Photos");
+      track.innerHTML=photos.map(photo=>`<div class="photo-lightbox-slide"><img src="${escapeHtml(photo.url)}" alt="${escapeHtml(photo.alt)}" draggable="false"></div>`).join("");
+      document.body.classList.add("photo-lightbox-open");
+      dialog.showModal();
+      goTo(index,false);
+      close.focus({preventScroll:true});
+    };
+  }
+
+  function initCarousels(openPhoto){
     $$(".photo-carousel").forEach(carousel=>{
       const track=carousel.querySelector(".carousel-track");
       const slides=[...carousel.querySelectorAll(".carousel-slide")];
       const dots=[...carousel.querySelectorAll(".carousel-dot")];
-      if(!track || slides.length<2) return;
-
-      let index=0;
-
+      if(!track||!slides.length)return;
+      let index=0,timer=null,startX=0,startY=0,dragged=false;
+      track.addEventListener("pointerdown",event=>{startX=event.clientX;startY=event.clientY;dragged=false},{passive:true});
+      track.addEventListener("pointermove",event=>{
+        if(Math.abs(event.clientX-startX)>10||Math.abs(event.clientY-startY)>10)dragged=true;
+      },{passive:true});
+      slides.forEach((slide,i)=>{
+        const button=slide.querySelector(".carousel-photo-open");
+        button.addEventListener("click",event=>{
+          if(dragged&&event.detail>0)return;
+          openPhoto(carousel,i,button);
+        });
+      });
       const goTo=(nextIndex,smooth=true)=>{
         index=Math.max(0,Math.min(slides.length-1,nextIndex));
-        track.scrollTo({
-          left:index*track.clientWidth,
-          behavior:smooth?"smooth":"auto"
-        });
-        dots.forEach((d,i)=>d.classList.toggle("active",i===index));
+        track.scrollTo({left:index*track.clientWidth,behavior:smooth?"smooth":"auto"});
+        dots.forEach((dot,i)=>dot.classList.toggle("active",i===index));
       };
-
-      const prev=carousel.querySelector(".carousel-arrow.prev");
-      const next=carousel.querySelector(".carousel-arrow.next");
-      if(prev) prev.addEventListener("click",()=>goTo(index-1));
-      if(next) next.addEventListener("click",()=>goTo(index+1));
-
+      const prev=carousel.querySelector(".carousel-arrow.prev"),next=carousel.querySelector(".carousel-arrow.next");
+      if(prev)prev.addEventListener("click",()=>goTo(index-1));
+      if(next)next.addEventListener("click",()=>goTo(index+1));
       dots.forEach((dot,i)=>dot.addEventListener("click",()=>goTo(i)));
-
-      let timer=null;
       track.addEventListener("scroll",()=>{
         clearTimeout(timer);
         timer=setTimeout(()=>{
-          const width=track.clientWidth||1;
-          index=Math.round(track.scrollLeft/width);
-          dots.forEach((d,i)=>d.classList.toggle("active",i===index));
+          index=Math.round(track.scrollLeft/(track.clientWidth||1));
+          dots.forEach((dot,i)=>dot.classList.toggle("active",i===index));
         },70);
       },{passive:true});
-
-      window.addEventListener("resize",()=>goTo(index,false));
+      const onResize=()=>goTo(index,false);
+      window.addEventListener("resize",onResize);
+      carouselCleanups.push(()=>{clearTimeout(timer);window.removeEventListener("resize",onResize)});
     });
   }
 
   function bindUI(){
-    initCarousels();
+    const openPhoto=initPhotoLightbox();
+    initCarousels(openPhoto);
     $$("[data-lang]").forEach(btn=>btn.addEventListener("click",()=>{
       lang=btn.dataset.lang;localStorage.setItem("mba83-lang",lang);render();
     }));
